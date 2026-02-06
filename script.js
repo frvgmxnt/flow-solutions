@@ -17,6 +17,7 @@ async function loadScripts() {
         filteredScripts = [...scripts];
         updateStats();
         populateGameFilter();
+        setupEventListeners();
         renderScripts();
     } catch (error) {
         console.error('Error loading scripts:', error);
@@ -24,10 +25,49 @@ async function loadScripts() {
     }
 }
 
+// Setup event listeners
+function setupEventListeners() {
+    // Search box
+    const searchBox = document.getElementById('searchBox');
+    if (searchBox) {
+        searchBox.addEventListener('input', (e) => {
+            filters.search = e.target.value;
+            applyFilters();
+        });
+    }
+
+    // Game filter
+    const gameFilter = document.getElementById('gameFilter');
+    if (gameFilter) {
+        gameFilter.addEventListener('change', (e) => {
+            filters.game = e.target.value;
+            applyFilters();
+        });
+    }
+
+    // Status toggles
+    const statusAll = document.getElementById('statusAll');
+    const statusUndetected = document.getElementById('statusUndetected');
+    const statusDetected = document.getElementById('statusDetected');
+
+    if (statusAll) {
+        statusAll.addEventListener('click', () => toggleStatus('all'));
+    }
+    if (statusUndetected) {
+        statusUndetected.addEventListener('click', () => toggleStatus('undetected'));
+    }
+    if (statusDetected) {
+        statusDetected.addEventListener('click', () => toggleStatus('detected'));
+    }
+}
+
 // Populate game filter dropdown
 function populateGameFilter() {
     const gameFilter = document.getElementById('gameFilter');
     const games = [...new Set(scripts.map(s => s.game))].sort();
+
+    // Clear existing options except "All Games"
+    gameFilter.innerHTML = '<option value="">All Games</option>';
 
     games.forEach(game => {
         const option = document.createElement('option');
@@ -40,20 +80,23 @@ function populateGameFilter() {
 // Apply filters
 function applyFilters() {
     filteredScripts = scripts.filter(script => {
-        // Search filter
-        const matchesSearch = script.name.toLowerCase().includes(filters.search.toLowerCase());
+        // Search filter - search in name field
+        const matchesSearch = !filters.search ||
+            script.name.toLowerCase().includes(filters.search.toLowerCase());
 
-        // Game filter
+        // Game filter - match exact game
         const matchesGame = !filters.game || script.game === filters.game;
 
-        // Status filter
+        // Status filter - check status field
         let matchesStatus = true;
         if (filters.status === 'undetected') {
             matchesStatus = script.status.toLowerCase() === 'undetected';
         } else if (filters.status === 'detected') {
-            matchesStatus = script.status.toLowerCase().includes('detected') &&
-                script.status.toLowerCase() !== 'undetected';
+            // Match both "Detected" and "Detected in some games"
+            const statusLower = script.status.toLowerCase();
+            matchesStatus = statusLower.includes('detected') && statusLower !== 'undetected';
         }
+        // if status is 'all', matchesStatus stays true
 
         return matchesSearch && matchesGame && matchesStatus;
     });
@@ -61,18 +104,6 @@ function applyFilters() {
     currentPage = 0;
     renderScripts();
 }
-
-// Search box event
-document.getElementById('searchBox').addEventListener('input', (e) => {
-    filters.search = e.target.value;
-    applyFilters();
-});
-
-// Game filter event
-document.getElementById('gameFilter').addEventListener('change', (e) => {
-    filters.game = e.target.value;
-    applyFilters();
-});
 
 // Toggle status filter
 function toggleStatus(status) {
@@ -82,7 +113,11 @@ function toggleStatus(status) {
     document.querySelectorAll('.toggle-btn').forEach(btn => {
         btn.classList.remove('active');
     });
-    document.querySelector(`[data-status="${status}"]`).classList.add('active');
+
+    const activeBtn = document.querySelector(`[data-status="${status}"]`);
+    if (activeBtn) {
+        activeBtn.classList.add('active');
+    }
 
     applyFilters();
 }
@@ -156,7 +191,7 @@ function renderScripts() {
     <div class="card" style="animation-delay: ${index * 0.1}s">
       <img 
         src="img/${script.image}" 
-        alt="${script.name}" 
+        alt="${escapeHtml(script.name)}" 
         class="script-image" 
         onerror="this.src='img/placeholder.png'"
         onclick="showImageModal('img/${script.image}', '${escapeHtml(script.name)}')"
@@ -166,7 +201,7 @@ function renderScripts() {
       <div class="text-xs text-gray-500 mb-2">
         <div class="mb-1">Author: <span class="text-gray-300">${escapeHtml(script.author)}</span></div>
         <div class="mb-1">Game: <span class="text-gray-300">${escapeHtml(script.game)}</span></div>
-        <div>Status: <span class="status-badge ${getStatusClass(script.status)}">${escapeHtml(script.status)}</span></div>
+        <div><span class="status-badge ${getStatusClass(script.status)}">${escapeHtml(script.status)}</span></div>
       </div>
       <button class="btn-copy" onclick="copyScript(\`${escapeHtml(script.script)}\`, '${escapeHtml(script.name)}')">
         Copy Script
