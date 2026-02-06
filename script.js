@@ -1,18 +1,90 @@
 let scripts = [];
+let filteredScripts = [];
 let currentPage = 0;
 const itemsPerPage = 6;
+
+let filters = {
+    search: '',
+    game: '',
+    status: 'all'
+};
 
 // Load scripts from JSON
 async function loadScripts() {
     try {
         const response = await fetch('scripts.json');
         scripts = await response.json();
+        filteredScripts = [...scripts];
         updateStats();
+        populateGameFilter();
         renderScripts();
     } catch (error) {
         console.error('Error loading scripts:', error);
         showToast('❌ Failed to load scripts', 'error');
     }
+}
+
+// Populate game filter dropdown
+function populateGameFilter() {
+    const gameFilter = document.getElementById('gameFilter');
+    const games = [...new Set(scripts.map(s => s.game))].sort();
+
+    games.forEach(game => {
+        const option = document.createElement('option');
+        option.value = game;
+        option.textContent = game;
+        gameFilter.appendChild(option);
+    });
+}
+
+// Apply filters
+function applyFilters() {
+    filteredScripts = scripts.filter(script => {
+        // Search filter
+        const matchesSearch = script.name.toLowerCase().includes(filters.search.toLowerCase());
+
+        // Game filter
+        const matchesGame = !filters.game || script.game === filters.game;
+
+        // Status filter
+        let matchesStatus = true;
+        if (filters.status === 'undetected') {
+            matchesStatus = script.status.toLowerCase() === 'undetected';
+        } else if (filters.status === 'detected') {
+            matchesStatus = script.status.toLowerCase().includes('detected') &&
+                script.status.toLowerCase() !== 'undetected';
+        }
+
+        return matchesSearch && matchesGame && matchesStatus;
+    });
+
+    currentPage = 0;
+    renderScripts();
+}
+
+// Search box event
+document.getElementById('searchBox').addEventListener('input', (e) => {
+    filters.search = e.target.value;
+    applyFilters();
+});
+
+// Game filter event
+document.getElementById('gameFilter').addEventListener('change', (e) => {
+    filters.game = e.target.value;
+    applyFilters();
+});
+
+// Toggle status filter
+function toggleStatus(status) {
+    filters.status = status;
+
+    // Update active button
+    document.querySelectorAll('.toggle-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    document.querySelector(`[data-status="${status}"]`).classList.add('active');
+
+    applyFilters();
 }
 
 // Update statistics
@@ -66,7 +138,19 @@ function renderScripts() {
     const container = document.getElementById('scriptsContainer');
     const start = currentPage * itemsPerPage;
     const end = start + itemsPerPage;
-    const pageScripts = scripts.slice(start, end);
+    const pageScripts = filteredScripts.slice(start, end);
+
+    if (pageScripts.length === 0) {
+        container.innerHTML = `
+      <div style="grid-column: 1 / -1; text-align: center; padding: 4rem 0;">
+        <div style="font-size: 3rem; margin-bottom: 1rem;">🔍</div>
+        <p style="color: #888888; font-size: 1.125rem;">No scripts found</p>
+        <p style="color: #666666; font-size: 0.875rem; margin-top: 0.5rem;">Try adjusting your filters</p>
+      </div>
+    `;
+        updateNavigation();
+        return;
+    }
 
     container.innerHTML = pageScripts.map((script, index) => `
     <div class="card" style="animation-delay: ${index * 0.1}s">
@@ -82,7 +166,7 @@ function renderScripts() {
       <div class="text-xs text-gray-500 mb-2">
         <div class="mb-1">Author: <span class="text-gray-300">${escapeHtml(script.author)}</span></div>
         <div class="mb-1">Game: <span class="text-gray-300">${escapeHtml(script.game)}</span></div>
-        <div><span class="status-badge ${getStatusClass(script.status)}">${escapeHtml(script.status)}</span></div>
+        <div>Status: <span class="status-badge ${getStatusClass(script.status)}">${escapeHtml(script.status)}</span></div>
       </div>
       <button class="btn-copy" onclick="copyScript(\`${escapeHtml(script.script)}\`, '${escapeHtml(script.name)}')">
         Copy Script
@@ -105,14 +189,19 @@ function copyScript(scriptContent, scriptName) {
 
 // Update navigation buttons
 function updateNavigation() {
-    const totalPages = Math.ceil(scripts.length / itemsPerPage);
+    const totalPages = Math.ceil(filteredScripts.length / itemsPerPage);
     const prevBtn = document.getElementById('prevBtn');
     const nextBtn = document.getElementById('nextBtn');
     const pageInfo = document.getElementById('pageInfo');
 
     prevBtn.disabled = currentPage === 0;
-    nextBtn.disabled = currentPage >= totalPages - 1;
-    pageInfo.textContent = `Page ${currentPage + 1} of ${totalPages}`;
+    nextBtn.disabled = currentPage >= totalPages - 1 || totalPages === 0;
+
+    if (totalPages === 0) {
+        pageInfo.textContent = 'No results';
+    } else {
+        pageInfo.textContent = `Page ${currentPage + 1} of ${totalPages}`;
+    }
 }
 
 // Navigation handlers
@@ -125,7 +214,7 @@ document.getElementById('prevBtn').addEventListener('click', () => {
 });
 
 document.getElementById('nextBtn').addEventListener('click', () => {
-    const totalPages = Math.ceil(scripts.length / itemsPerPage);
+    const totalPages = Math.ceil(filteredScripts.length / itemsPerPage);
     if (currentPage < totalPages - 1) {
         currentPage++;
         renderScripts();
