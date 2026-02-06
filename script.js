@@ -82,7 +82,7 @@ function renderScripts() {
       <div class="text-xs text-gray-500 mb-2">
         <div class="mb-1">Author: <span class="text-gray-300">${escapeHtml(script.author)}</span></div>
         <div class="mb-1">Game: <span class="text-gray-300">${escapeHtml(script.game)}</span></div>
-        <div>Status: <span class="status-badge ${getStatusClass(script.status)}">${escapeHtml(script.status)}</span></div>
+        <div><span class="status-badge ${getStatusClass(script.status)}">${escapeHtml(script.status)}</span></div>
       </div>
       <button class="btn-copy" onclick="copyScript(\`${escapeHtml(script.script)}\`, '${escapeHtml(script.name)}')">
         Copy Script
