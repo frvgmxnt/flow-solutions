@@ -5,5 +5,5 @@
     "status": "Detected in some games",
     "description": "Legit universal script, has nice ESP. Solara V3 is unsupported!",
     "image": "jaranuniversal.jpg",
-    "script": "loadstring(game:HttpGet('https://raw.githubusercontent.com/salamshegol/flow-solutions/refs/heads/main/scripts/jaranuniversal.lua'))()"
+    "script": "loadstring(game:HttpGet('https://raw.githubusercontent.com/frvgmxnt/leaked_scripts/refs/heads/main/jaranuniversal.lua'))()"
 }]
